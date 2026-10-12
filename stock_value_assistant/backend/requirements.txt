@@ -1,0 +1,9 @@
+fastapi==0.109.0
+uvicorn==0.27.0
+sqlalchemy==2.0.25
+yfinance==0.2.36
+pykrx==1.0.46
+psycopg2-binary==2.9.9
+pandas==2.2.0
+python-multipart==0.0.6
+google-genai==0.3.0
