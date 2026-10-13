@@ -29,53 +29,71 @@ const Main = () => {
   };
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container" style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
       {/* 헤더 영역 */}
       <header className="header" style={{
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
-        alignItems: 'stretch'
+        alignItems: 'stretch',
+        backgroundColor: 'white',
+        padding: '1.5rem',
+        borderRadius: '20px',
+        marginBottom: '2rem',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
       }}>
         <div className="header-titles">
-          <h1>Stock Value Assistant</h1>
-          <p>상한가 및 거래량 급등 종목 실시간 분석</p>
+          <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: '900', color: '#0f172a', margin: '0 0 4px 0' }}>
+            Stock Value Assistant
+          </h1>
+          <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
+            상한가 및 거래량 급등 종목 실시간 분석
+          </p>
         </div>
 
-        {/* 컨트롤 영역 (날짜 선택기 및 분석 실행 버튼) */}
+        {/* 💡 컨트롤 영역: flex-wrap과 flex: '1 1 200px'로 모바일/PC 반응형 자동 정렬 */}
         <div className="header-controls" style={{
           display: 'flex',
           flexWrap: 'wrap',
           alignItems: 'center',
           gap: '12px',
-          justifyContent: 'space-between'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>분석 날짜:</span>
+          {/* 날짜 선택 박스 (모바일에서는 전체 너비, PC에서는 나란히) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 220px' }}>
+            <span style={{ fontSize: '0.9rem', color: '#475569', fontWeight: '700', whiteSpace: 'nowrap' }}>분석 날짜:</span>
             <input
               type="date"
               value={includeDate}
               onChange={(e) => setIncludeDate(e.target.value)}
               style={{
-                padding: '8px',
-                borderRadius: '8px',
-                border: '1px solid #ddd',
+                flex: '1',
+                padding: '10px',
+                borderRadius: '10px',
+                border: '1px solid #cbd5e1',
                 fontSize: '0.9rem',
                 outline: 'none',
-                backgroundColor: 'var(--bg-input, #fff)'
+                backgroundColor: '#fff'
               }}
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '1', justifyContent: 'flex-end' }}>
+          {/* 분석 실행 버튼 박스 (모바일에서는 전체 너비로 꽉 참) */}
+          <div style={{ display: 'flex', flex: '1 1 220px' }}>
             <button 
               className="refresh-button" 
               onClick={handleRefresh} 
               disabled={loading}
               style={{
-                flex: '1 1 auto',
-                maxWidth: '200px',
-                minWidth: '130px'
+                width: '100%',
+                padding: '10px 16px',
+                borderRadius: '10px',
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                fontWeight: '700',
+                cursor: 'pointer',
+                fontSize: '0.9rem'
               }}
             >
               {loading ? '분석 중...' : '시장 데이터 분석 실행'}
@@ -85,15 +103,15 @@ const Main = () => {
       </header>
 
       {errorMsg && (
-        <div style={{ color: 'var(--danger)', textAlign: 'center', marginBottom: '20px', fontWeight: 'bold' }}>
+        <div style={{ color: '#dc2626', textAlign: 'center', marginBottom: '20px', fontWeight: 'bold' }}>
           ⚠️ {errorMsg}
         </div>
       )}
 
       {loading ? (
-        <div className="loading-container">
+        <div className="loading-container" style={{ textAlign: 'center', padding: '4rem' }}>
           <div className="spinner"></div>
-          <p style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>데이터를 불러오는 중입니다...</p>
+          <p style={{ color: '#64748b', fontWeight: '600', marginTop: '1rem' }}>데이터를 불러오는 중입니다...</p>
         </div>
       ) : data.length > 0 ? (
         <div className="analysis-grid" style={{
@@ -106,30 +124,34 @@ const Main = () => {
               key={index}
               className="stock-card"
               onClick={() => navigate(`/stock/${stock.ticker}`, { state: { stock, analysisDate: includeDate } })}
-              style={{ cursor: 'pointer' }}
+              style={{ 
+                cursor: 'pointer', backgroundColor: 'white', padding: '1.5rem', 
+                borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' 
+              }}
             >
-              <div className="stock-header">
-                <span className="stock-name">{stock.name}</span>
+              <div className="stock-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                <span className="stock-name" style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1e293b' }}>{stock.name}</span>
                 <div style={{ textAlign: 'right' }}>
-                  <div className="stock-price">{formatPrice(stock.close)}</div>
+                  <div className="stock-price" style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>{formatPrice(stock.close)}</div>
                   <div style={{
                     fontSize: '0.9rem',
                     fontWeight: 'bold',
-                    color: stock.change_rate > 0 ? 'var(--danger)' : 'var(--accent-blue)'
+                    color: stock.change_rate > 0 ? '#ef4444' : '#2563eb',
+                    marginTop: '2px'
                   }}>
                     {formatPercent(stock.change_rate)}
                   </div>
                 </div>
               </div>
-              <div className="reason-badge">{stock.reason}</div>
-              <div className="investment-preview">
+              <div className="reason-badge" style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem' }}>{stock.reason}</div>
+              <div className="investment-preview" style={{ fontSize: '0.85rem', fontWeight: '700', color: '#2563eb' }}>
                 기업 리서치 리포트 보기 →
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <div className="empty-state">
+        <div className="empty-state" style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8', background: 'white', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
           <p>아직 분석된 데이터가 없습니다. 버튼을 눌러 분석을 시작하세요.</p>
         </div>
       )}
