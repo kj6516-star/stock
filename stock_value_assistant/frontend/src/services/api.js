@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 // 1. 메인 화면 모멘텀 종목 리스트 가져오기 (market.py 연동)
 export async function getMarketStocks(date = "") {
