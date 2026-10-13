@@ -12,7 +12,7 @@ from cachetools import TTLCache, cached
 
 load_dotenv()
 DART_API_KEY = os.getenv("DART_API_KEY")
-dart = opendartreader(DART_API_KEY) if DART_API_KEY else None
+dart = opendartreader.OpenDartReader(DART_API_KEY) if DART_API_KEY else None
 
 def get_stock_krx_detail(ticker: str, date_str: str = None) -> dict:
     """

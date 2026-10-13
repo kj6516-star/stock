@@ -9,7 +9,7 @@ DART_API_KEY = os.getenv("DART_API_KEY")
 KRX_ID = os.getenv("KRX_ID")
 KRX_PW = os.getenv("KRX_PW")
 
-dart = opendartreader(DART_API_KEY) if DART_API_KEY else None
+dart = opendartreader.OpenDartReader(DART_API_KEY) if DART_API_KEY else None
 
 # [추가됨] DART 캐시 설정 (최대 100개 종목 보관, 유지 시간 30분 = 1800초)
 dart_cache = TTLCache(maxsize=100, ttl=1800)
