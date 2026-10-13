@@ -4,7 +4,6 @@ import { useMarketStocks } from '../hooks/useStockQueries';
 
 const Main = () => {
   const navigate = useNavigate();
-  const [includeAI, setIncludeAI] = useState(false);
   const [includeDate, setIncludeDate] = useState(new Date().toISOString().split('T')[0]);
 
   const { data = [], isLoading: loading, error: queryError, refetch } = useMarketStocks(includeDate);
@@ -31,10 +30,10 @@ const Main = () => {
 
   return (
     <div className="dashboard-container">
-      {/* 💡 헤더 영역: 모바일 대응을 위해 CSS 클래스 또는 인라인 반응형 스타일 적용 */}
+      {/* 헤더 영역 */}
       <header className="header" style={{
         display: 'flex',
-        flexDirection: 'column', // 모바일 기본: 세로 정렬
+        flexDirection: 'column',
         gap: '16px',
         alignItems: 'stretch'
       }}>
@@ -43,10 +42,10 @@ const Main = () => {
           <p>상한가 및 거래량 급등 종목 실시간 분석</p>
         </div>
 
-        {/* 컨트롤 영역 (날짜, AI 체크박스, 버튼) */}
+        {/* 컨트롤 영역 (날짜 선택기 및 분석 실행 버튼) */}
         <div className="header-controls" style={{
           display: 'flex',
-          flexWrap: 'wrap', // 화면이 좁아지면 자연스럽게 다음 줄로 떨어짐
+          flexWrap: 'wrap',
           alignItems: 'center',
           gap: '12px',
           justifyContent: 'space-between'
@@ -68,31 +67,14 @@ const Main = () => {
             />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              color: 'var(--text-secondary)',
-              fontWeight: '600'
-            }}>
-              <input
-                type="checkbox"
-                checked={includeAI}
-                onChange={(e) => setIncludeAI(e.target.checked)}
-                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-              />
-              AI 리포트 생성 (토큰 소모)
-            </label>
-
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: '1', justifyContent: 'flex-end' }}>
             <button 
               className="refresh-button" 
               onClick={handleRefresh} 
               disabled={loading}
               style={{
-                flex: '1 1 auto', // 모바일에서 버튼이 여유 공간을 채우거나 자연스럽게 배치되도록
+                flex: '1 1 auto',
+                maxWidth: '200px',
                 minWidth: '130px'
               }}
             >
@@ -116,7 +98,6 @@ const Main = () => {
       ) : data.length > 0 ? (
         <div className="analysis-grid" style={{
           display: 'grid',
-          // 💡 화면 크기에 따라 1열 ~ 3열까지 반응형으로 자동 조절되는 그리드
           gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
           gap: '16px'
         }}>
