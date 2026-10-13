@@ -125,7 +125,7 @@ const Main = () => {
               style={{ 
                 cursor: 'pointer', 
                 /* 💡 눈이 아프지 않도록 아주 은은한 아이보리/미색 톤(#fcfcfd) 또는 부드러운 화이트 배경 적용 */
-                backgroundColor: '#fdfdfe', 
+                backgroundColor: '#b6b277', 
                 padding: '1.5rem', 
                 borderRadius: '16px', 
                 border: '1px solid #e2e8f0', 
