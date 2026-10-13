@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMarketStocks } from '../hooks/useStockQueries'; // 👈 커스텀 훅 임포트
+import { useMarketStocks } from '../hooks/useStockQueries';
 
 const Main = () => {
   const navigate = useNavigate();
   const [includeAI, setIncludeAI] = useState(false);
   const [includeDate, setIncludeDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // 🚀 TanStack Query 훅 적용: 날짜(includeDate)가 바뀔 때마다 알아서 데이터를 가져오고 캐싱합니다!
   const { data = [], isLoading: loading, error: queryError, refetch } = useMarketStocks(includeDate);
   const errorMsg = queryError ? "데이터를 불러오는 중 오류가 발생했습니다." : null;
 
@@ -26,55 +25,80 @@ const Main = () => {
     return (num > 0 ? '+' : '') + num.toFixed(2) + '%';
   };
 
-  // 새로고침(분석 실행) 버튼 클릭 시 수동으로 최신 데이터를 다시 불러옴 (refetch)
   const handleRefresh = () => {
-    // 만약 includeAI 옵션에 따라 별도 동작이 필요하다면 여기에 추가 로직 작성
     refetch();
   };
 
   return (
     <div className="dashboard-container">
-      <header className="header">
-        <div>
+      {/* 💡 헤더 영역: 모바일 대응을 위해 CSS 클래스 또는 인라인 반응형 스타일 적용 */}
+      <header className="header" style={{
+        display: 'flex',
+        flexDirection: 'column', // 모바일 기본: 세로 정렬
+        gap: '16px',
+        alignItems: 'stretch'
+      }}>
+        <div className="header-titles">
           <h1>Stock Value Assistant</h1>
           <p>상한가 및 거래량 급등 종목 실시간 분석</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+
+        {/* 컨트롤 영역 (날짜, AI 체크박스, 버튼) */}
+        <div className="header-controls" style={{
+          display: 'flex',
+          flexWrap: 'wrap', // 화면이 좁아지면 자연스럽게 다음 줄로 떨어짐
+          alignItems: 'center',
+          gap: '12px',
+          justifyContent: 'space-between'
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: '600' }}>분석 날짜:</span>
             <input
               type="date"
               value={includeDate}
-              onChange={(e) => setIncludeDate(e.target.value)} // 💡 날짜를 바꾸면 훅이 자동으로 해당 날짜 데이터를 요청!
+              onChange={(e) => setIncludeDate(e.target.value)}
               style={{
                 padding: '8px',
                 borderRadius: '8px',
                 border: '1px solid #ddd',
                 fontSize: '0.9rem',
-                outline: 'none'
+                outline: 'none',
+                backgroundColor: 'var(--bg-input, #fff)'
               }}
             />
           </div>
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            color: 'var(--text-secondary)',
-            fontWeight: '600'
-          }}>
-            <input
-              type="checkbox"
-              checked={includeAI}
-              onChange={(e) => setIncludeAI(e.target.checked)}
-              style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-            />
-            AI 리포트 생성 (토큰 소모)
-          </label>
-          <button className="refresh-button" onClick={handleRefresh} disabled={loading}>
-            {loading ? '분석 중...' : '시장 데이터 분석 실행'}
-          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              color: 'var(--text-secondary)',
+              fontWeight: '600'
+            }}>
+              <input
+                type="checkbox"
+                checked={includeAI}
+                onChange={(e) => setIncludeAI(e.target.checked)}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
+              AI 리포트 생성 (토큰 소모)
+            </label>
+
+            <button 
+              className="refresh-button" 
+              onClick={handleRefresh} 
+              disabled={loading}
+              style={{
+                flex: '1 1 auto', // 모바일에서 버튼이 여유 공간을 채우거나 자연스럽게 배치되도록
+                minWidth: '130px'
+              }}
+            >
+              {loading ? '분석 중...' : '시장 데이터 분석 실행'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -90,7 +114,12 @@ const Main = () => {
           <p style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>데이터를 불러오는 중입니다...</p>
         </div>
       ) : data.length > 0 ? (
-        <div className="analysis-grid">
+        <div className="analysis-grid" style={{
+          display: 'grid',
+          // 💡 화면 크기에 따라 1열 ~ 3열까지 반응형으로 자동 조절되는 그리드
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '16px'
+        }}>
           {data.map((stock, index) => (
             <div
               key={index}

@@ -1,8 +1,6 @@
-// src/pages/News.jsx
 import React, { useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Newspaper, BookOpen, X } from 'lucide-react';
-// 작성하신 커스텀 훅 경로에 맞게 임포트하세요 (예: ../hooks/useQueries 등)
 import { useNewsList, useNewsContentMutation } from '../hooks/useStockQueries.js'; 
 
 const NewsPage = () => {
@@ -13,20 +11,15 @@ const NewsPage = () => {
   const stockName = location.state?.stockName || ticker;
   const analysisDate = location.state?.analysisDate;
 
-  // 1. 훅을 이용한 뉴스 리스트 조회 (자동 캐싱 및 페칭)
   const { 
     data: rawNewsData, 
     isLoading: loading, 
     isError 
   } = useNewsList(stockName, analysisDate);
 
-  // 2. 뉴스 본문 크롤링을 위한 useMutation 훅
   const contentMutation = useNewsContentMutation();
-
-  // 본문 미리보기 모달 상태 관리
   const [selectedNews, setSelectedNews] = useState(null);
 
-  // 백엔드 응답 구조에 맞게 리스트 매핑 (에러 시 더미 데이터 처리 포함)
   const newsList = isError || !rawNewsData 
     ? [
         {
@@ -39,18 +32,14 @@ const NewsPage = () => {
       ]
     : (rawNewsData.data || rawNewsData || []);
 
-  // [본문 보기] 버튼 클릭 시 동작
   const handleOpenContent = (news) => {
-    // 이미 본문이 담겨있다면 바로 모달 열기
     if (news.content) {
       setSelectedNews(news);
       return;
     }
 
-    // 일단 제목, 링크와 함께 모달을 띄우고 로딩 시작
     setSelectedNews(news);
 
-    // useMutation의 mutate 호출
     contentMutation.mutate(news.link, {
       onSuccess: (res) => {
         const contentText = res.content || res.data || "본문 내용을 불러오지 못했습니다.";
@@ -64,7 +53,7 @@ const NewsPage = () => {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+    <div style={{ padding: '1.5rem', maxWidth: '1000px', margin: '0 auto', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
       
       {/* 상단 뒤로가기 버튼 */}
       <button
@@ -78,14 +67,14 @@ const NewsPage = () => {
       </button>
 
       {/* 헤더 타이틀 */}
-      <header style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '20px', marginBottom: '2rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+      <header style={{ backgroundColor: 'white', padding: '1.5rem', sm: { padding: '2rem' }, borderRadius: '20px', marginBottom: '2rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.5rem' }}>
           <Newspaper size={24} color="#2563eb" />
-          <h1 style={{ fontSize: '1.8rem', fontWeight: '900', color: '#0f172a', margin: 0 }}>
+          <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 1.8rem)', fontWeight: '900', color: '#0f172a', margin: 0 }}>
             {stockName} 관련 주요 뉴스
           </h1>
         </div>
-        <p style={{ color: '#64748b', fontSize: '0.95rem', margin: 0 }}>
+        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
           {analysisDate ? `기준일 (${analysisDate}) 전후의 특징주 및 호재성 기사 목록입니다.` : '실시간 관련 뉴스 목록입니다.'}
         </p>
       </header>
@@ -104,32 +93,34 @@ const NewsPage = () => {
             newsList.map((news, index) => (
               <div 
                 key={index} 
+                className="news-card"
                 style={{ 
                   backgroundColor: 'white', padding: '1.5rem', borderRadius: '16px', 
                   border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem'
+                  display: 'flex', flexDirection: 'column', md: { flexDirection: 'row' }, justifyContent: 'space-between', alignItems: 'flex-start', md: { alignItems: 'center' }, gap: '1rem'
                 }}
               >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, width: '100%' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#2563eb', background: '#eff6ff', padding: '2px 8px', borderRadius: '6px' }}>
                       {news.press}
                     </span>
                     <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{news.date}</span>
                   </div>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1e293b', margin: 0, lineHeight: '1.4' }}>
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: '800', color: '#1e293b', margin: 0, lineHeight: '1.4' }}>
                     {news.title}
                   </h3>
                 </div>
                 
-                {/* 버튼 그룹 (본문 미리보기 및 원본 링크) */}
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {/* 💡 버튼 그룹: 모바일에서는 너비 100% 채우기 또는 간격 정렬 */}
+                <div className="news-card-buttons" style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '100%', md: { width: 'auto' }, justifyContent: 'flex-end', marginTop: '8px', md: { marginTop: '0' } }}>
                   <button
                     onClick={() => handleOpenContent(news)}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: '6px', background: '#eff6ff',
+                      flex: 1, md: { flex: 'none' },
+                      display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', background: '#eff6ff',
                       border: '1px solid #bfdbfe', padding: '10px 14px', borderRadius: '10px',
-                      color: '#2563eb', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap'
+                      color: '#2563eb', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '0.9rem'
                     }}
                   >
                     <BookOpen size={16} /> 본문 보기
@@ -140,9 +131,10 @@ const NewsPage = () => {
                     target="_blank" 
                     rel="noreferrer"
                     style={{
-                      display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc',
+                      flex: 1, md: { flex: 'none' },
+                      display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', background: '#f8fafc',
                       border: '1px solid #cbd5e1', padding: '10px 14px', borderRadius: '10px',
-                      color: '#334155', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap'
+                      color: '#334155', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap', fontSize: '0.9rem'
                     }}
                   >
                     원문 <ExternalLink size={16} />
@@ -166,33 +158,33 @@ const NewsPage = () => {
           zIndex: 1000, padding: '1rem'
         }}>
           <div style={{
-            backgroundColor: 'white', width: '100%', maxWidth: '700px', maxHeight: '80vh',
-            borderRadius: '20px', padding: '2rem', display: 'flex', flexDirection: 'column',
+            backgroundColor: 'white', width: '100%', maxWidth: '700px', maxHeight: '85vh',
+            borderRadius: '20px', padding: '1.5rem', sm: { padding: '2rem' }, display: 'flex', flexDirection: 'column',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', overflow: 'hidden'
           }}>
             {/* 모달 헤더 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
-              <div>
+              <div style={{ paddingRight: '10px' }}>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '6px' }}>
                   <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#2563eb', background: '#eff6ff', padding: '2px 8px', borderRadius: '6px' }}>
                     {selectedNews.press}
                   </span>
                   <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{selectedNews.date}</span>
                 </div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: '800', color: '#0f172a', margin: 0, lineHeight: '1.4' }}>
+                <h2 style={{ fontSize: '1.1rem', sm: { fontSize: '1.25rem' }, fontWeight: '800', color: '#0f172a', margin: 0, lineHeight: '1.4' }}>
                   {selectedNews.title}
                 </h2>
               </div>
               <button
                 onClick={() => setSelectedNews(null)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px', flexShrink: 0 }}
               >
                 <X size={24} />
               </button>
             </div>
 
-            {/* 모달 본문 내용 (뮤테이션 로딩 상태 반영) */}
-            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', marginBottom: '1.5rem', lineHeight: '1.7', color: '#334155', fontSize: '1rem', whiteSpace: 'pre-line' }}>
+            {/* 모달 본문 내용 */}
+            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px', marginBottom: '1.5rem', lineHeight: '1.7', color: '#334155', fontSize: '0.95rem', sm: { fontSize: '1rem' }, whiteSpace: 'pre-line' }}>
               {contentMutation.isPending ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: '#2563eb', fontWeight: '600' }}>
                   🔄 기사 본문을 크롤링 중입니다...
@@ -203,14 +195,14 @@ const NewsPage = () => {
             </div>
 
             {/* 모달 하단 푸터 */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', sm: { flexDirection: 'row' }, justifyContent: 'flex-end', gap: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
               <a
                 href={selectedNews.link}
                 target="_blank"
                 rel="noreferrer"
                 style={{
-                  display: 'flex', alignItems: 'center', gap: '6px', background: '#2563eb', color: 'white',
-                  padding: '10px 16px', borderRadius: '10px', fontWeight: '700', textDecoration: 'none'
+                  display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', background: '#2563eb', color: 'white',
+                  padding: '10px 16px', borderRadius: '10px', fontWeight: '700', textDecoration: 'none', fontSize: '0.9rem'
                 }}
               >
                 브라우저에서 원문 전체 보기 <ExternalLink size={16} />
@@ -219,7 +211,7 @@ const NewsPage = () => {
                 onClick={() => setSelectedNews(null)}
                 style={{
                   background: '#f1f5f9', border: 'none', padding: '10px 16px', borderRadius: '10px',
-                  color: '#64748b', fontWeight: '700', cursor: 'pointer'
+                  color: '#64748b', fontWeight: '700', cursor: 'pointer', fontSize: '0.9rem'
                 }}
               >
                 닫기
