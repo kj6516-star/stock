@@ -1,553 +1,168 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, BarChart2, Users, Wallet, FileText, Info, PieChart, Layers, Sparkles } from 'lucide-react';
-import { useStockDetail } from '../hooks/useStockQueries'; 
+import { useNavigate } from 'react-router-dom';
+import { useMarketStocks } from '../hooks/useStockQueries';
 
-const StockDetail = () => {
-  const { ticker } = useParams();
-  const location = useLocation();
+const Main = () => {
   const navigate = useNavigate();
-  
-  const initialStock = location.state?.stock || {};
-  const analysisDate = location.state?.analysisDate;
+  const [includeDate, setIncludeDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const { data: apiResponse, isLoading: loadingDetail, error } = useStockDetail(ticker);
-
-  const [stock, setStock] = useState(initialStock);
-  const [viewMode, setViewMode] = useState('annual'); 
-  const [activeFsTab, setActiveFsTab] = useState('CFS'); 
-  const [showFullFinancials, setShowFullFinancials] = useState(false); 
+  const { data = [], isLoading: loading, error: queryError, refetch } = useMarketStocks(includeDate);
+  const errorMsg = queryError ? "데이터를 불러오는 중 오류가 발생했습니다." : null;
 
   useEffect(() => {
-    if (!apiResponse) return;
-    
-    const dart = apiResponse?.dart_info || {};
-    const company = dart.company_info || {};
+    console.log("백엔드에서 받아온 시장 분석 데이터 (data):", data);
+  }, [data]);
 
-    const mappedCompanyInfo = {
-      ceo: company.ceo_nm || company.ceo || '-',
-      est_dt: company.est_dt || '-',
-      industry: company.induty_code || company.industry || '-',
-      url: company.hm_url || company.url || '-'
-    };
-
-    let annualPerformance = {};
-    const annualObj = dart.financials?.annual || dart.삼개년실적;
-    if (annualObj && typeof annualObj === 'object') {
-      Object.keys(annualObj).forEach(yearKey => {
-        const items = annualObj[yearKey];
-        if (Array.isArray(items)) {
-          annualPerformance[yearKey] = items;
-        }
-      });
-    }
-
-    let quarterlyPerformance = {};
-    const quarterlyObj = dart.financials?.quarterly || dart.분기실적;
-    if (quarterlyObj && typeof quarterlyObj === 'object') {
-      Object.keys(quarterlyObj).forEach(qKey => {
-        const items = quarterlyObj[qKey];
-        if (Array.isArray(items)) {
-          quarterlyPerformance[qKey] = items;
-        }
-      });
-    }
-
-    const disclosures = dart.최근공시 || dart.disclosures || dart.reports || [];
-    const shares = dart.지분구조 || dart.shareholders || dart.major_shareholders || [];
-    const employeeDividend = dart.인력및배당 || dart.employee_dividend || {};
-
-    setStock(prev => ({
-      ...prev,
-      ...dart,
-      company_info: mappedCompanyInfo,
-      삼개년실적맵: annualPerformance,
-      분기실적맵: quarterlyPerformance,
-      최근공시: disclosures,
-      지분구조: shares,
-      인력및배당: employeeDividend,
-      
-      종목명: prev.name || prev.종목명 || company.corp_name || ticker,
-      현재가: prev.close || dart.close || prev.현재가 || 0,
-      등락률: prev.change_rate ?? dart.change_rate ?? prev.등락률 ?? 0,
-      시가총액: prev.market_cap || dart.market_cap || prev.시가총액 || 0,
-      PER: prev.per ?? dart.per ?? prev.PER ?? 'N/A',
-      PBR: prev.pbr ?? dart.pbr ?? prev.PBR ?? '0.0',
-      EPS: prev.eps ?? dart.eps ?? prev.EPS ?? 'N/A',
-      BPS: prev.bps ?? dart.bps ?? prev.BPS ?? 'N/A',
-      배당수익률: prev.dividend_yield || dart.dividend_yield || prev.배당수익률 || 0,
-      거래량: prev.volume || dart.volume || prev.거래량 || 0
-    }));
-  }, [apiResponse, ticker]);
-
-  const formatAmount = (val) => {
-    if (val === undefined || val === null) return '-';
-    let num = Number(String(val).replace(/,/g, ''));
-    if (isNaN(num)) return '-';
-    if (num === 0) return '0원';
-
-    const isNegative = num < 0;
-    const absNum = Math.abs(num);
-    const sign = isNegative ? '-' : '';
-
-    if (absNum >= 1000000000000) {
-      const jo = Math.floor(absNum / 1000000000000);
-      const eok = Math.floor((absNum % 1000000000000) / 100000000);
-      return `${sign}${jo}조${eok > 0 ? ` ${eok.toLocaleString()}억` : ''}`;
-    }
-    if (absNum >= 100000000) {
-      return `${sign}${Math.floor(absNum / 100000000).toLocaleString()}억`;
-    }
-    return `${sign}${absNum.toLocaleString()}원`;
+  const formatPrice = (price) => {
+    if (price === undefined || price === null) return '0원';
+    return new Intl.NumberFormat('ko-KR').format(price) + '원';
   };
 
-  const formatPrice = (val) => new Intl.NumberFormat('ko-KR').format(val || 0);
-
-  const companyInfo = stock.company_info || {};
-  const stockName = stock.종목명 || ticker; 
-  const currentPrice = stock.현재가 || 0;
-  const changeRate = stock.등락률 || 0;
-  const marketType = stock.market || 'KOSPI';
-  
-  const annualMap = stock['삼개년실적맵'] || {};
-  const quarterlyMap = stock['분기실적맵'] || {};
-  const currentMap = viewMode === 'annual' ? annualMap : quarterlyMap;
-
-  const disclosuresList = stock['최근공시'] || [];
-  const sharesList = stock['지분구조'] || [];
-  const employeeData = stock['인력및배당'] || {};
-
-  const getSummaryList = () => {
-    const keys = Object.keys(currentMap).sort();
-    return keys.map(key => {
-      const items = currentMap[key];
-      if (!Array.isArray(items)) return null;
-
-      const findVal = (names) => {
-        const found = items.find(i => {
-          const fsDiv = i.fs_div || i.SJ_DIV || '';
-          const acName = i.account_nm || i.account_name || i.계정과목명 || '';
-          return (!fsDiv || fsDiv === activeFsTab || fsDiv.includes(activeFsTab)) && names.includes(acName);
-        });
-        if (!found) return 0;
-        const rawVal = found.thstrm_amount ?? found.thstrm_add_amount ?? found.amount ?? found.cur_amount ?? found.val ?? 0;
-        return parseFloat(String(rawVal).replace(/,/g, '')) || 0;
-      };
-
-      return {
-        period: key,
-        revenue: findVal(['매출액', '수익(매출액)']),
-        op_profit: findVal(['영업이익', '영업이익(손실)']),
-        net_income: findVal(['당기순이익', '당기순이익(손실)']),
-        equity: findVal(['자본총계']),
-        liabilities: findVal(['부채총계'])
-      };
-    }).filter(Boolean);
+  const formatPercent = (rate) => {
+    const num = Number(rate);
+    if (isNaN(num)) return "0.00%";
+    return (num > 0 ? '+' : '') + num.toFixed(2) + '%';
   };
 
-  const summaryList = getSummaryList();
-
-  const getFullAccountListForPeriod = (periodKey) => {
-    const items = currentMap[periodKey];
-    if (!Array.isArray(items)) return [];
-    return items.filter(i => {
-      const fsDiv = i.fs_div || i.SJ_DIV || '';
-      return !fsDiv || fsDiv === activeFsTab || fsDiv.includes(activeFsTab);
-    });
-  };
-
-  const getAccountAmount = (acc) => {
-    const rawVal = acc.thstrm_amount ?? acc.thstrm_add_amount ?? acc.amount ?? acc.cur_amount ?? acc.val ?? acc.당기금액 ?? 0;
-    return formatAmount(rawVal);
+  const handleRefresh = () => {
+    refetch();
   };
 
   return (
-    <div className="stock-detail-container" style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
-      
-      {/* 상단 네비게이션 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', border: '1px solid #e2e8f0',
-            padding: '8px 16px', borderRadius: '12px', color: '#64748b', cursor: 'pointer', fontWeight: '600'
-          }}
-        >
-          <ArrowLeft size={18} /> 목록으로
-        </button>
-        {analysisDate && (
-          <div style={{ color: '#64748b', fontWeight: '700', fontSize: '0.9rem', backgroundColor: 'white', padding: '8px 16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            기준일: {analysisDate}
-          </div>
-        )}
-      </div>
-
-      {/* 상단 헤더 */}
-      <header style={{ marginBottom: '2rem', backgroundColor: 'white', padding: '2rem', borderRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-          <div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
-              <button
-                onClick={() => navigate(`/news/${encodeURIComponent(stockName)}`, { 
-                  state: { stockName: stockName, ticker: ticker, analysisDate: analysisDate } 
-                })}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe',
-                  padding: '8px 14px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                📰 관련 뉴스 모아보기
-              </button>
-
-              <button
-                onClick={() => navigate(`/ai/${ticker}`, { 
-                  state: { ticker: ticker, corp_code: stock.corp_code || stock.corpCode || '', stock_name: stockName, analysisDate: analysisDate } 
-                })}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                  backgroundColor: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe',
-                  padding: '8px 14px', borderRadius: '12px', fontWeight: '800', cursor: 'pointer',
-                  fontSize: '0.9rem'
-                }}
-              >
-                <Sparkles size={16} /> 실시간 AI 분석 리포트 보기
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ background: '#eff6ff', color: '#2563eb', padding: '4px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '800' }}>
-                {marketType}
-              </span>
-              <span style={{ color: '#94a3b8', fontSize: '1rem', letterSpacing: '1px' }}>{ticker}</span>
-            </div>
-            <h1 style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', fontWeight: '900', margin: 0, color: '#0f172a', letterSpacing: '-1px' }}>{stockName}</h1>
-          </div>
-
-          <div style={{ textAlign: 'left', '@media (min-width: 768px)': { textAlign: 'right' } }}>
-            <div style={{ fontSize: 'clamp(2rem, 4vw, 2.5rem)', fontWeight: '900', color: '#0f172a' }}>{formatPrice(currentPrice)}원</div>
-            <div style={{
-              color: 'white',
-              background: changeRate > 0 ? '#ef4444' : '#3b82f6',
-              padding: '6px 14px',
-              borderRadius: '10px',
-              display: 'inline-block',
-              fontWeight: '800',
-              fontSize: '1rem',
-              marginTop: '8px'
-            }}>
-              {changeRate > 0 ? '▲' : '▼'} {changeRate}%
-            </div>
-          </div>
+    <div className="dashboard-container" style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+      {/* 헤더 영역 */}
+      <header className="header" style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
+        alignItems: 'stretch',
+        backgroundColor: '#ffffff',
+        padding: '1.5rem',
+        borderRadius: '20px',
+        marginBottom: '2rem',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)'
+      }}>
+        <div className="header-titles">
+          <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: '900', color: '#0f172a', margin: '0 0 4px 0' }}>
+            Stock Value Assistant
+          </h1>
+          <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>
+            상한가 및 거래량 급등 종목 실시간 분석
+          </p>
         </div>
 
-        {/* 기업 기본 정보 요약 바 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', padding: '1.2rem', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
-          {[
-            { label: '대표자', value: companyInfo.ceo, icon: <Users size={16} /> },
-            { label: '설립일', value: companyInfo.est_dt, icon: <Info size={16} /> },
-            { label: '업종코드', value: companyInfo.industry, icon: <PieChart size={16} /> },
-            { label: '홈페이지', value: companyInfo.url, isLink: true, icon: <FileText size={16} /> }
-          ].map((item, idx) => (
-            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <div style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {item.icon} {item.label}
+        {/* 컨트롤 영역 */}
+        <div className="header-controls" style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '12px',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: '1 1 220px' }}>
+            <span style={{ fontSize: '0.9rem', color: '#475569', fontWeight: '700', whiteSpace: 'nowrap' }}>분석 날짜:</span>
+            <input
+              type="date"
+              value={includeDate}
+              onChange={(e) => setIncludeDate(e.target.value)}
+              style={{
+                flex: '1',
+                padding: '10px',
+                borderRadius: '10px',
+                border: '1px solid #cbd5e1',
+                fontSize: '0.9rem',
+                outline: 'none',
+                backgroundColor: '#fff'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flex: '1 1 220px' }}>
+            <button 
+              className="refresh-button" 
+              onClick={handleRefresh} 
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '10px 16px',
+                borderRadius: '10px',
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                fontWeight: '700',
+                cursor: 'pointer',
+                fontSize: '0.9rem'
+              }}
+            >
+              {loading ? '분석 중...' : '시장 데이터 분석 실행'}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {errorMsg && (
+        <div style={{ color: '#dc2626', textAlign: 'center', marginBottom: '20px', fontWeight: 'bold' }}>
+          ⚠️ {errorMsg}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="loading-container" style={{ textAlign: 'center', padding: '4rem' }}>
+          <div className="spinner"></div>
+          <p style={{ color: '#64748b', fontWeight: '600', marginTop: '1rem' }}>데이터를 불러오는 중입니다...</p>
+        </div>
+      ) : data.length > 0 ? (
+        <div className="analysis-grid" style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+          gap: '16px'
+        }}>
+          {data.map((stock, index) => (
+            <div
+              key={index}
+              className="stock-card"
+              onClick={() => navigate(`/stock/${stock.ticker}`, { state: { stock, analysisDate: includeDate } })}
+              style={{ 
+                cursor: 'pointer', 
+                /* 💡 눈이 아프지 않도록 아주 은은한 아이보리/미색 톤(#fcfcfd) 또는 부드러운 화이트 배경 적용 */
+                backgroundColor: '#fdfdfe', 
+                padding: '1.5rem', 
+                borderRadius: '16px', 
+                border: '1px solid #e2e8f0', 
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+              }}
+            >
+              <div className="stock-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                <span className="stock-name" style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1e293b' }}>{stock.name}</span>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="stock-price" style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>{formatPrice(stock.close)}</div>
+                  <div style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 'bold',
+                    color: stock.change_rate > 0 ? '#ef4444' : '#2563eb',
+                    marginTop: '2px'
+                  }}>
+                    {formatPercent(stock.change_rate)}
+                  </div>
+                </div>
               </div>
-              <div style={{ fontSize: '1rem', fontWeight: '700', color: '#334155', wordBreak: 'break-all' }}>
-                {item.isLink && item.value && item.value !== '-' ? (
-                  <a href={item.value.startsWith('http') ? item.value : `http://${item.value}`} target="_blank" rel="noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>
-                    {item.value}
-                  </a>
-                ) : (item.value || '-')}
+              <div className="reason-badge" style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem', backgroundColor: '#f1f5f9', padding: '6px 10px', borderRadius: '8px', display: 'inline-block' }}>
+                {stock.reason}
+              </div>
+              <div className="investment-preview" style={{ fontSize: '0.85rem', fontWeight: '700', color: '#2563eb' }}>
+                기업 리서치 리포트 보기 →
               </div>
             </div>
           ))}
         </div>
-      </header>
-
-      {loadingDetail && (
-        <div style={{ textAlign: 'center', padding: '1rem', color: '#2563eb', fontWeight: '600', marginBottom: '1rem' }}>
-          🔄 기업의 모든 상세 정보를 불러오는 중입니다...
+      ) : (
+        <div className="empty-state" style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8', background: '#fdfdfe', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+          <p>아직 분석된 데이터가 없습니다. 버튼을 눌러 분석을 시작하세요.</p>
         </div>
       )}
-
-      {error && (
-        <div style={{ textAlign: 'center', padding: '1rem', color: '#ef4444', fontWeight: '600', marginBottom: '1rem' }}>
-          ⚠️ 상세 정보를 불러오는 중 오류가 발생했습니다.
-        </div>
-      )}
-
-      {/* 💡 본문 레이아웃: 모바일에서는 1단 세로 정렬, PC(1024px 이상)에서는 2단 그리드 정렬 */}
-      <div className="detail-content-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
-        
-        {/* 왼쪽 섹션: 재무 트렌드 및 공시 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          <section style={{ backgroundColor: 'white', padding: '1.5rem', sm: { padding: '2.5rem' }, borderRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', overflowX: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.3rem', fontWeight: '800', margin: 0, color: '#0f172a' }}>
-                📊 실적 트렌드 요약
-              </h2>
-              
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px', gap: '4px' }}>
-                  <button
-                    onClick={() => setViewMode('annual')}
-                    style={{
-                      padding: '6px 12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer',
-                      background: viewMode === 'annual' ? '#2563eb' : 'transparent',
-                      color: viewMode === 'annual' ? 'white' : '#64748b'
-                    }}
-                  >
-                    연간
-                  </button>
-                  <button
-                    onClick={() => setViewMode('quarterly')}
-                    style={{
-                      padding: '6px 12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer',
-                      background: viewMode === 'quarterly' ? '#2563eb' : 'transparent',
-                      color: viewMode === 'quarterly' ? 'white' : '#64748b'
-                    }}
-                  >
-                    분기
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '12px', gap: '4px' }}>
-                  <button
-                    onClick={() => setActiveFsTab('CFS')}
-                    style={{
-                      padding: '6px 12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer',
-                      background: activeFsTab === 'CFS' ? 'white' : 'transparent',
-                      color: activeFsTab === 'CFS' ? '#2563eb' : '#64748b',
-                      boxShadow: activeFsTab === 'CFS' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-                    }}
-                  >
-                    연결(CFS)
-                  </button>
-                  <button
-                    onClick={() => setActiveFsTab('OFS')}
-                    style={{
-                      padding: '6px 12px', borderRadius: '8px', border: 'none', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer',
-                      background: activeFsTab === 'OFS' ? 'white' : 'transparent',
-                      color: activeFsTab === 'OFS' ? '#2563eb' : '#64748b',
-                      boxShadow: activeFsTab === 'OFS' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none'
-                    }}
-                  >
-                    개별(OFS)
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-              {summaryList.length > 0 ? (
-                <table style={{ width: '100%', minWidth: '500px', borderCollapse: 'separate', borderSpacing: '0', textAlign: 'right' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ padding: '12px', textAlign: 'left', borderBottom: '2px solid #f1f5f9', color: '#64748b', fontWeight: '600' }}>항목</th>
-                      {summaryList.slice().reverse().map(f => (
-                        <th key={f.period} style={{ padding: '12px', borderBottom: '2px solid #f1f5f9', color: '#0f172a', fontWeight: '800' }}>{f.period}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { label: '매출액', key: 'revenue' },
-                      { label: '영업이익', key: 'op_profit' },
-                      { label: '당기순이익', key: 'net_income' },
-                      { label: '자본총계', key: 'equity' },
-                      { label: '부채총계', key: 'liabilities' }
-                    ].map((item, idx) => (
-                      <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? 'white' : '#f8fafc' }}>
-                        <td style={{ padding: '12px', textAlign: 'left', fontWeight: '700', color: '#475569', borderBottom: '1px solid #f1f5f9' }}>{item.label}</td>
-                        {summaryList.slice().reverse().map(f => (
-                          <td key={f.period} style={{ padding: '12px', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#1e293b' }}>
-                            {formatAmount(f[item.key])}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                    
-                    <tr style={{ backgroundColor: '#fff7ed' }}>
-                      <td style={{ padding: '12px', textAlign: 'left', fontWeight: '800', color: '#c2410c' }}>영업이익률 (%)</td>
-                      {summaryList.slice().reverse().map(f => {
-                        const margin = (f.revenue && f.revenue !== 0) ? (f.op_profit / f.revenue * 100).toFixed(2) : '-';
-                        return (
-                          <td key={f.period} style={{ padding: '12px', fontWeight: '800', color: margin < 0 ? '#ef4444' : '#c2410c' }}>
-                            {margin !== '-' ? margin + '%' : '-'}
-                          </td>
-                        );
-                      })}
-                    </tr>
-
-                    <tr style={{ backgroundColor: '#eff6ff' }}>
-                      <td style={{ padding: '12px', textAlign: 'left', fontWeight: '800', color: '#1d4ed8' }}>부채비율 (%)</td>
-                      {summaryList.slice().reverse().map(f => (
-                        <td key={f.period} style={{ padding: '12px', fontWeight: '800', color: (f.liabilities / f.equity * 100) > 200 ? '#ef4444' : '#1d4ed8' }}>
-                          {f.equity ? (f.liabilities / f.equity * 100).toFixed(1) + '%' : '-'}
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '3rem', color: '#94a3b8', fontWeight: '600' }}>
-                  표시할 재무 데이터가 없습니다. ({viewMode === 'quarterly' ? '분기 데이터 없음' : '연간 데이터 없음'})
-                </div>
-              )}
-            </div>
-
-            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', textAlign: 'center' }}>
-              <button
-                onClick={() => setShowFullFinancials(!showFullFinancials)}
-                style={{
-                  background: '#f8fafc', border: '1px solid #cbd5e1', padding: '10px 20px', borderRadius: '12px',
-                  color: '#334155', fontWeight: '700', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px',
-                  width: '100%', justifyContent: 'center', maxWidth: '400px'
-                }}
-              >
-                <Layers size={16} color="#2563eb" />
-                {showFullFinancials ? '▲ 상세 계정 전체 보기 닫기' : '▼ DART 원본 상세 계정 전체 보기'}
-              </button>
-            </div>
-
-            {showFullFinancials && (
-              <div style={{ marginTop: '1.5rem', backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <h4 style={{ fontSize: '1rem', fontWeight: '800', color: '#1e293b', marginBottom: '1rem' }}>
-                  📋 전체 계정과목 상세 내역 ({viewMode === 'annual' ? '연간' : '분기'}) / ({activeFsTab === 'CFS' ? '연결' : '개별'})
-                </h4>
-                {Object.keys(currentMap).sort().reverse().map(periodKey => {
-                  const fullItems = getFullAccountListForPeriod(periodKey);
-                  return (
-                    <div key={periodKey} style={{ marginBottom: '1.5rem' }}>
-                      <div style={{ fontWeight: '800', color: '#2563eb', marginBottom: '8px', fontSize: '0.95rem' }}>[{periodKey}]</div>
-                      {fullItems.length > 0 ? (
-                        <div style={{ maxHeight: '250px', overflowY: 'auto', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '8px' }}>
-                          <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
-                            <tbody>
-                              {fullItems.map((acc, idx) => {
-                                const accountName = acc.account_nm || acc.account_name || acc.계정과목명 || '기타계정';
-                                const formattedVal = getAccountAmount(acc);
-                                return (
-                                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                    <td style={{ padding: '6px 8px', color: '#475569', fontWeight: '600' }}>{accountName}</td>
-                                    <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: '700', color: '#1e293b' }}>
-                                      {formattedVal}
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: '0.85rem', color: '#94a3b8' }}>해당 기간 데이터가 없습니다.</div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
-          {/* 최근 주요 공시 */}
-          <section style={{ backgroundColor: 'white', padding: '1.5rem', sm: { padding: '2.5rem' }, borderRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ fontSize: '1.3rem', fontWeight: '800', marginBottom: '1.2rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileText size={20} color="#2563eb" /> 최근 주요 공시
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {disclosuresList.length > 0 ? disclosuresList.map((d, i) => (
-                <div key={i} style={{ padding: '12px', borderLeft: '4px solid #3b82f6', background: '#f8fafc', borderRadius: '4px 12px 12px 4px' }}>
-                  <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#1e293b', marginBottom: '4px', lineHeight: '1.4' }}>{d.title || d.report_nm}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{d.date || d.rcept_dt}</div>
-                </div>
-              )) : <div style={{ color: '#94a3b8', textAlign: 'center', padding: '1rem' }}>최근 공시 없음</div>}
-            </div>
-          </section>
-        </div>
-
-        {/* 오른쪽 섹션: 마켓 지표, 주주, 내성 지표 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          <section style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '1.2rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <BarChart2 size={20} color="#2563eb" /> 마켓 핵심 지표
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {[
-                { label: '시가총액', value: formatAmount(stock.시가총액), color: '#0f172a' },
-                { label: 'PER / PBR', value: `${stock.PER || 'N/A'} / ${stock.PBR || '0.0'}`, color: '#2563eb' },
-                { label: 'EPS (주당순이익)', value: stock.EPS !== 'N/A' ? `${Number(stock.EPS).toLocaleString()}원` : 'N/A', color: '#0f172a' },
-                { label: 'BPS (주당순자산)', value: stock.BPS !== 'N/A' ? `${Number(stock.BPS).toLocaleString()}원` : 'N/A', color: '#0f172a' },
-                { label: '배당수익률', value: stock.배당수익률 ? stock.배당수익률 + '%' : '-', color: '#059669' },
-                { label: '거래량', value: (stock.거래량 || 0).toLocaleString() + ' 주', color: '#0f172a' }
-              ].map((item, idx, arr) => (
-                <div key={idx} style={{ borderBottom: idx < arr.length - 1 ? '1px solid #f1f5f9' : 'none', paddingBottom: idx < arr.length - 1 ? '0.8rem' : '0' }}>
-                  <div style={{ color: '#94a3b8', fontSize: '0.8rem', fontWeight: '600', marginBottom: '2px' }}>{item.label}</div>
-                  <div style={{ fontSize: '1rem', fontWeight: '800', color: item.color }}>{item.value}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '24px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '1.2rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Users size={20} color="#2563eb" /> 주요 주주 현황 (대량보유)
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-              {sharesList.length > 0 ? sharesList.map((s, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #f1f5f9', gap: '8px' }}>
-                  <div style={{ overflow: 'hidden' }}>
-                    <div style={{ fontWeight: '700', color: '#334155', fontSize: '0.9rem', wordBreak: 'break-all' }}>{s.repror || s.name || s.nm || '기타주주'}</div>
-                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '2px' }}>
-                      {s.report_tp ? `유형: ${s.report_tp}` : ''} {s.rcept_dt ? `(${s.rcept_dt})` : ''}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontWeight: '800', color: '#2563eb', fontSize: '1rem' }}>
-                      {s.stkrt ? `${s.stkrt}%` : (s.rate ? `${s.rate}%` : '-')}
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>
-                      {s.stkqy ? `${s.stkqy}주` : ''}
-                    </div>
-                  </div>
-                </div>
-              )) : <div style={{ textAlign: 'center', color: '#94a3b8', padding: '1rem' }}>지분 정보 없음</div>}
-            </div>
-          </section>
-
-          <section style={{ backgroundColor: '#1e293b', color: 'white', padding: '1.5rem', borderRadius: '24px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ fontSize: '1.2rem', fontWeight: '800', marginBottom: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Wallet size={18} color="#60a5fa" /> 기업 내성 지표
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-              <div>
-                <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: '2px' }}>인당 평균 급여</div>
-                <div style={{ fontSize: '1.1rem', fontWeight: '800' }}>
-                  {formatAmount(employeeData.avg_salary || employeeData.sal)}
-                </div>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px' }}>
-                <div>
-                  <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: '2px' }}>평균 근속연수</div>
-                  <div style={{ fontSize: '1rem', fontWeight: '800' }}>{employeeData.avg_service || employeeData.cox || '-'} 년</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ color: '#94a3b8', fontSize: '0.75rem', marginBottom: '2px' }}>주당 배당금</div>
-                  <div style={{ fontSize: '1rem', fontWeight: '800', color: '#4ade80' }}>
-                    {formatAmount(employeeData.div_per_share || employeeData.dps)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-        </div>
-      </div>
     </div>
   );
 };
 
-export default StockDetail;
+export default Main;
