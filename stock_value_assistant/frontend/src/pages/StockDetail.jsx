@@ -29,7 +29,7 @@ const Main = () => {
   };
 
   return (
-    <div className="dashboard-container" style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto', backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+    <div className="dashboard-container" style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto', backgroundColor: '#f1f5f9', minHeight: '100vh' }}>
       {/* 헤더 영역 */}
       <header className="header" style={{
         display: 'flex',
@@ -40,8 +40,8 @@ const Main = () => {
         padding: '1.5rem',
         borderRadius: '20px',
         marginBottom: '2rem',
-        border: '1px solid #e2e8f0',
-        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)'
+        border: '1px solid #cbd5e1',
+        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.03)'
       }}>
         <div className="header-titles">
           <h1 style={{ fontSize: 'clamp(1.5rem, 4vw, 2rem)', fontWeight: '900', color: '#0f172a', margin: '0 0 4px 0' }}>
@@ -124,17 +124,17 @@ const Main = () => {
               onClick={() => navigate(`/stock/${stock.ticker}`, { state: { stock, analysisDate: includeDate } })}
               style={{ 
                 cursor: 'pointer', 
-                /* 💡 눈이 아프지 않도록 아주 은은한 아이보리/미색 톤(#fcfcfd) 또는 부드러운 화이트 배경 적용 */
-                backgroundColor: '#b6b277', 
+                /* 💡 눈이 편안하도록 부드러운 아이보리/미색 계열 (#f8fafc)로 확실하게 변경 */
+                backgroundColor: '#b91a1a', 
                 padding: '1.5rem', 
                 borderRadius: '16px', 
-                border: '1px solid #e2e8f0', 
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.03)',
+                border: '1px solid #cbd5e1', 
+                boxShadow: '0 2px 6px rgba(0, 0, 0, 0.04)',
                 transition: 'transform 0.15s ease, box-shadow 0.15s ease'
               }}
             >
               <div className="stock-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <span className="stock-name" style={{ fontSize: '1.1rem', fontWeight: '800', color: '#1e293b' }}>{stock.name}</span>
+                <span className="stock-name" style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>{stock.name}</span>
                 <div style={{ textAlign: 'right' }}>
                   <div className="stock-price" style={{ fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>{formatPrice(stock.close)}</div>
                   <div style={{
@@ -147,9 +147,12 @@ const Main = () => {
                   </div>
                 </div>
               </div>
-              <div className="reason-badge" style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1rem', backgroundColor: '#f1f5f9', padding: '6px 10px', borderRadius: '8px', display: 'inline-block' }}>
+
+              {/* 사유 뱃지 배경색도 명확한 연회색(#f1f5f9)으로 지정 */}
+              <div className="reason-badge" style={{ fontSize: '0.85rem', color: '#334155', fontWeight: '600', marginBottom: '1rem', backgroundColor: '#f1f5f9', padding: '6px 10px', borderRadius: '8px', display: 'inline-block' }}>
                 {stock.reason}
               </div>
+
               <div className="investment-preview" style={{ fontSize: '0.85rem', fontWeight: '700', color: '#2563eb' }}>
                 기업 리서치 리포트 보기 →
               </div>
@@ -157,7 +160,7 @@ const Main = () => {
           ))}
         </div>
       ) : (
-        <div className="empty-state" style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8', background: '#fdfdfe', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+        <div className="empty-state" style={{ textAlign: 'center', padding: '4rem', color: '#94a3b8', background: '#ffffff', borderRadius: '20px', border: '1px solid #cbd5e1' }}>
           <p>아직 분석된 데이터가 없습니다. 버튼을 눌러 분석을 시작하세요.</p>
         </div>
       )}
